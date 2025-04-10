@@ -7,34 +7,38 @@ document.addEventListener("DOMContentLoaded", function () {
   let episodesCache = {};
   let currentEpisodes = [];
 
-  // Create show and episode dropdowns
+  // Create and insert show and episode dropdowns
   const showSelect = document.createElement("select");
   showSelect.id = "showSelect";
   const episodeSelect = document.createElement("select");
   episodeSelect.id = "episodeSelect";
-
   document.body.insertBefore(showSelect, root);
   document.body.insertBefore(episodeSelect, root);
 
-  // Format S01E01
+  // Format episode code like S01E01
   function formatEpisodeCode(season, number) {
-    return `S${String(season).padStart(2,"0")}E${String(number).padStart(2, "0")}`
-    ;}
+    return `S${String(season).padStart(2, "0")}E${String(number).padStart(2, "0")}`;
+  }
 
-  // Display filtered episodes
+  // Show loading message
+  function showLoading() {
+    root.innerHTML = "<p>Loading episodes, please wait...</p>";
+  }
+
+  // Show error message
+  function showError(message) {
+    root.innerHTML = `<p style="color: red;">${message}</p>`;
+  }
+
+  // Display episodes on the page
   function displayEpisodes(filteredEpisodes) {
-    root.innerHTML = "";
+    root.innerHTML = ""; // Clear root container
     filteredEpisodes.forEach((episode) => {
       const episodeElement = document.createElement("div");
       episodeElement.id = `episode-${episode.id}`;
       episodeElement.innerHTML = `
-        <h2>${episode.name} (${formatEpisodeCode(
-        episode.season,
-        episode.number
-      )})</h2>
-        <img src="${
-          episode.image ? episode.image.medium : "placeholder.jpg"
-        }" alt="${episode.name}">
+        <h2>${episode.name} (${formatEpisodeCode(episode.season, episode.number)})</h2>
+        <img src="${episode.image ? episode.image.medium : "placeholder.jpg"}" alt="${episode.name}">
         <p>${episode.summary}</p>
       `;
       root.appendChild(episodeElement);
@@ -48,10 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
     currentEpisodes.forEach((episode) => {
       const option = document.createElement("option");
       option.value = `episode-${episode.id}`;
-      option.textContent = `${formatEpisodeCode(
-        episode.season,
-        episode.number
-      )} - ${episode.name}`;
+      option.textContent = `${formatEpisodeCode(episode.season, episode.number)} - ${episode.name}`;
       episodeSelect.appendChild(option);
     });
   }
@@ -67,7 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
         populateShowDropdown();
       })
       .catch(() => {
-        root.innerHTML = `<p style="color:red;">Failed to load shows. Please refresh the page.</p>`;
+        showError("Failed to load shows. Please refresh the page.");
       });
   }
 
@@ -81,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Fetch episodes for a show, only once per session
+  // Fetch episodes for a show, with caching
   function fetchEpisodesForShow(showId) {
     if (episodesCache[showId]) {
       currentEpisodes = episodesCache[showId];
@@ -90,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    root.innerHTML = "<p>Loading episodes...</p>";
+    showLoading();
     fetch(`https://api.tvmaze.com/shows/${showId}/episodes`)
       .then((response) => response.json())
       .then((data) => {
@@ -100,14 +101,14 @@ document.addEventListener("DOMContentLoaded", function () {
         populateEpisodeDropdown();
       })
       .catch(() => {
-        root.innerHTML = `<p style="color:red;">Failed to load episodes. Please try again later.</p>`;
+        showError("Failed to load episodes. Please try again later.");
       });
   }
 
-  // Handle show selection
+  // Show selection handler
   showSelect.addEventListener("change", function () {
     const selectedShowId = this.value;
-    searchInput.value = ""; // Reset search
+    searchInput.value = ""; // Reset search input
     if (selectedShowId) {
       fetchEpisodesForShow(selectedShowId);
     } else {
@@ -117,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Filter search
+  // Search filter
   searchInput.addEventListener("input", function () {
     const searchTerm = searchInput.value.toLowerCase();
     const filtered = currentEpisodes.filter(
@@ -139,6 +140,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Initial show fetch
+  // Initial fetch
   fetchAllShows();
 });
